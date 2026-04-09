@@ -1,657 +1,696 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ContentOS</title>
+import { useState, useEffect, useRef } from "react";
 
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --p50:#faf5ff;--p100:#f3e8ff;--p200:#e9d5ff;--p300:#d8b4fe;
-  --p400:#c084fc;--p500:#a855f7;--p600:#9333ea;--p700:#7c3aed;
-  --p800:#6d28d9;--p900:#4c1d95;
-  --gray50:#f9fafb;--gray100:#f3f4f6;--gray200:#e5e7eb;
-  --gray300:#d1d5db;--gray400:#9ca3af;--gray500:#6b7280;
-  --gray600:#4b5563;--gray700:#374151;--gray800:#1f2937;--gray900:#111827;
-  --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;
-  --shadow-sm:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:0 4px 16px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg:0 10px 40px rgba(0,0,0,0.08),0 4px 12px rgba(0,0,0,0.04);
-}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--gray50);color:var(--gray900);min-height:100vh;-webkit-font-smoothing:antialiased}
+const _link = document.createElement("link");
+_link.rel = "stylesheet";
+_link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap";
+document.head.appendChild(_link);
 
-/* ── Header ── */
-nav{height:56px;background:white;border-bottom:1px solid var(--gray200);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:100}
-.nav-left{display:flex;align-items:center;gap:10px}
-.nav-logo{width:30px;height:30px;background:linear-gradient(135deg,var(--p500),var(--p700));border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:white;letter-spacing:-0.03em}
-.nav-name{font-size:15px;font-weight:700;color:var(--gray900);letter-spacing:-0.02em}
-.nav-pill{padding:2px 8px;background:var(--p100);color:var(--p700);border-radius:20px;font-size:11px;font-weight:600;margin-left:4px}
-.nav-right{display:flex;gap:6px}
-.nav-btn{padding:6px 12px;font-size:12px;font-weight:500;border-radius:var(--radius-sm);border:1px solid var(--gray200);background:white;color:var(--gray600);cursor:pointer;font-family:inherit;transition:all .15s}
-.nav-btn:hover{background:var(--gray50);border-color:var(--gray300);color:var(--gray800)}
-.nav-btn.primary{background:var(--p600);border-color:var(--p600);color:white}
-.nav-btn.primary:hover{background:var(--p700);border-color:var(--p700)}
+const API_KEY = "sk-ant-YOUR-KEY-HERE";
+const MODEL   = "claude-sonnet-4-20250514";
 
-/* ── Hero ── */
-.hero{background:linear-gradient(135deg,var(--p600) 0%,var(--p800) 100%);padding:52px 32px;text-align:center;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
-.hero-inner{position:relative;max-width:600px;margin:0 auto}
-.hero-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.12);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:4px 12px;margin-bottom:18px}
-.hero-tag-dot{width:5px;height:5px;background:#a78bfa;border-radius:50%}
-.hero-tag span{font-size:11px;font-weight:600;color:rgba(255,255,255,0.9);letter-spacing:0.06em;text-transform:uppercase}
-.hero h1{font-size:36px;font-weight:800;color:white;letter-spacing:-0.03em;line-height:1.15;margin-bottom:10px}
-.hero p{font-size:15px;color:rgba(255,255,255,0.75);line-height:1.6}
-
-/* ── Layout ── */
-.app-shell{display:flex;max-width:1140px;margin:0 auto;padding:28px 24px;gap:20px;align-items:flex-start}
-.sidebar{width:220px;flex-shrink:0;position:sticky;top:76px}
-.main{flex:1;min-width:0}
-
-/* ── Sidebar ── */
-.sidebar-label{font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;padding:0 2px}
-.new-btn{width:100%;padding:9px 12px;border-radius:var(--radius-md);border:none;background:var(--p600);color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:16px;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
-.new-btn:hover{background:var(--p700)}
-.hist-item{padding:10px 12px;border-radius:var(--radius-md);border:1px solid var(--gray200);background:white;margin-bottom:6px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow-sm)}
-.hist-item:hover{border-color:var(--p300);box-shadow:0 2px 8px rgba(168,85,247,0.1)}
-.hist-item.active{border-color:var(--p400);background:var(--p50);box-shadow:0 2px 8px rgba(168,85,247,0.12)}
-.hist-type{display:inline-block;padding:1px 6px;background:var(--p100);color:var(--p700);border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;margin-bottom:4px}
-.hist-title{font-size:12px;font-weight:600;color:var(--gray800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
-.hist-date{font-size:10px;color:var(--gray400)}
-.hist-empty{font-size:12px;color:var(--gray400);line-height:1.6;padding:4px 2px}
-
-/* ── Cards ── */
-.card{background:white;border-radius:var(--radius-lg);padding:20px 24px;border:1px solid var(--gray200);margin-bottom:12px;box-shadow:var(--shadow-sm)}
-.card-title{font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px}
-.card-title span{color:var(--gray300);font-weight:400}
-
-/* ── Type selector ── */
-.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.type-btn{padding:12px 8px;border-radius:var(--radius-md);border:1.5px solid var(--gray200);background:var(--gray50);cursor:pointer;text-align:center;transition:all .15s;font-family:inherit}
-.type-btn:hover{border-color:var(--p300);background:var(--p50)}
-.type-btn.selected{border-color:var(--p500);background:var(--p50);box-shadow:0 0 0 3px rgba(168,85,247,0.1)}
-.type-label{font-size:12px;font-weight:600;color:var(--gray800);display:block}
-.type-sub{font-size:10px;color:var(--gray400);margin-top:2px;display:block}
-
-/* ── Speaker rows ── */
-.speaker-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
-.add-speaker-btn{padding:7px 12px;border-radius:var(--radius-sm);border:1px dashed var(--p400);background:var(--p50);color:var(--p600);cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;margin-top:4px;transition:all .15s}
-.add-speaker-btn:hover{background:var(--p100)}
-.remove-btn{padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--gray200);background:white;color:var(--gray400);cursor:pointer;font-size:12px;font-family:inherit}
-
-/* ── Fields ── */
-.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.meta-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.field label{font-size:10px;font-weight:600;color:var(--gray500);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.07em}
-.field input,.field select{width:100%;padding:9px 11px;border:1.5px solid var(--gray200);border-radius:var(--radius-sm);font-size:13.5px;color:var(--gray900);outline:none;background:white;font-family:inherit;transition:border-color .15s}
-.field input:focus,.field select:focus{border-color:var(--p400);box-shadow:0 0 0 3px rgba(168,85,247,0.08)}
-.field input::placeholder{color:var(--gray300)}
-
-/* ── Drop zone ── */
-.dropzone{border:2px dashed var(--gray200);border-radius:var(--radius-md);padding:20px;margin-bottom:12px;background:var(--gray50);cursor:pointer;text-align:center;transition:all .18s}
-.dropzone:hover,.dropzone.drag{border-color:var(--p400);background:var(--p50)}
-.dz-title{font-size:13px;color:var(--gray500);font-weight:500}
-.dz-sub{font-size:11px;color:var(--gray400);margin-top:2px}
-.divider{display:flex;align-items:center;gap:10px;margin:14px 0}
-.divider hr{flex:1;border:none;border-top:1px solid var(--gray200)}
-.divider span{font-size:11px;color:var(--gray400);font-weight:500}
-textarea.main-ta{width:100%;padding:12px 14px;border:1.5px solid var(--gray200);border-radius:var(--radius-md);font-size:13.5px;line-height:1.7;color:var(--gray900);resize:vertical;outline:none;background:white;font-family:inherit;min-height:200px;transition:border-color .15s}
-textarea.main-ta:focus{border-color:var(--p400);box-shadow:0 0 0 3px rgba(168,85,247,0.08)}
-textarea.main-ta::placeholder{color:var(--gray300)}
-.char-count{margin-top:5px;font-size:11px;color:var(--gray300);text-align:right}
-
-/* ── CTA ── */
-.cta{width:100%;padding:14px;border-radius:var(--radius-md);border:none;background:linear-gradient(135deg,var(--p500),var(--p700));color:white;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:-0.01em;transition:all .2s;font-family:inherit;box-shadow:0 4px 14px rgba(139,92,246,0.35)}
-.cta:disabled{background:var(--gray200);color:var(--gray400);cursor:not-allowed;box-shadow:none}
-.cta:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(139,92,246,0.4)}
-.cta-sub{text-align:center;font-size:11px;color:var(--gray400);margin-top:10px;line-height:1.7}
-.error{padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius-sm);color:#dc2626;font-size:13px;margin-bottom:12px}
-
-/* ── Output tabs ── */
-.tabs{display:flex;gap:1px;background:var(--gray100);padding:4px;border-radius:var(--radius-md);margin-bottom:16px;overflow-x:auto;border:1px solid var(--gray200)}
-.tab-btn{padding:7px 14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:all .15s;background:transparent;color:var(--gray500);font-family:inherit}
-.tab-btn:hover{color:var(--gray800)}
-.tab-btn.active{background:white;color:var(--p700);box-shadow:var(--shadow-sm)}
-
-/* ── Output panel ── */
-.output-panel{background:white;border-radius:var(--radius-lg);padding:24px 28px;box-shadow:var(--shadow-md);border:1px solid var(--gray200)}
-.section{margin-bottom:24px}
-.sec-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.sec-title-row{display:flex;align-items:center;gap:7px}
-.accent-bar{width:3px;height:14px;border-radius:2px;flex-shrink:0}
-.sec-label{font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:0.09em}
-.sec-actions{display:flex;gap:5px}
-.sec-content{background:var(--gray50);border:1px solid var(--gray200);border-radius:var(--radius-md);padding:14px 16px;font-size:13.5px;line-height:1.8;color:var(--gray700);white-space:pre-wrap;cursor:text;transition:border-color .15s}
-.sec-content:hover{border-color:var(--gray300)}
-.click-hint{font-size:10px;color:var(--gray300);margin-top:8px}
-.sec-textarea{width:100%;padding:12px 14px;border:2px solid var(--p400);border-radius:var(--radius-md);font-size:13.5px;line-height:1.75;color:var(--gray900);resize:vertical;outline:none;background:var(--p50);font-family:inherit;min-height:180px}
-.btn-sm{padding:4px 10px;font-size:11px;font-weight:500;border-radius:6px;border:1px solid var(--gray200);background:white;color:var(--gray500);cursor:pointer;font-family:inherit;transition:all .15s}
-.btn-sm:hover{border-color:var(--gray300);color:var(--gray800)}
-.btn-save{border-color:var(--p400);background:var(--p50);color:var(--p700);font-weight:600;padding:4px 12px;font-size:12px;border-radius:6px;cursor:pointer;font-family:inherit}
-.btn-cancel{padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--gray200);background:white;color:var(--gray500);cursor:pointer;font-family:inherit}
-.panel-footer{border-top:1px solid var(--gray100);padding-top:16px;margin-top:8px;display:flex;justify-content:flex-end;gap:6px}
-.output-note{text-align:center;font-size:11px;color:var(--gray400);margin-top:12px}
-
-/* ── Loading ── */
-#loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--p700),var(--p900));display:none;flex-direction:column;align-items:center;justify-content:center;z-index:200}
-.spinner{width:32px;height:32px;border:3px solid rgba(255,255,255,0.15);border-top-color:white;border-radius:50%;animation:spin .8s linear infinite;margin-top:36px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:440px;margin-top:24px}
-.chip{padding:4px 10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:20px;font-size:11px;color:rgba(255,255,255,0.6)}
-
-#input-view{display:block}
-#output-view{display:none}
-</style>
-</head>
-<body>
-
-<!-- Loading -->
-<div id="loading-screen">
-  <div style="width:48px;height:48px;background:rgba(255,255,255,0.15);border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:white;margin-bottom:24px;backdrop-filter:blur(10px)">C</div>
-  <div style="font-size:20px;font-weight:700;color:white;letter-spacing:-0.02em;margin-bottom:6px">Generating your package</div>
-  <div style="font-size:13px;color:rgba(255,255,255,0.55);max-width:300px;text-align:center;line-height:1.6">Extracting insights, crafting posts, building your full content package</div>
-  <div class="loading-chips">
-    <div class="chip">Strategic Summary</div><div class="chip">LinkedIn (4)</div>
-    <div class="chip">X Threads (3)</div><div class="chip">YouTube</div>
-    <div class="chip">Quote Bank</div><div class="chip">Titles & Thumbnails</div>
-  </div>
-  <div class="spinner"></div>
-</div>
-
-<!-- Nav -->
-<nav>
-  <div class="nav-left">
-    <div class="nav-logo">C</div>
-    <span class="nav-name">ContentOS</span>
-    <div id="context-pill" class="nav-pill" style="display:none"></div>
-  </div>
-  <div class="nav-right" id="header-output-btns" style="display:none">
-    <button class="nav-btn" onclick="exportMd()">↓ Export .md</button>
-    <button class="nav-btn" onclick="copyAll()">Copy all</button>
-    <button class="nav-btn primary" onclick="resetApp()">+ New</button>
-  </div>
-</nav>
-
-<!-- INPUT VIEW -->
-<div id="input-view">
-  <div class="hero">
-    <div class="hero-inner">
-      <div class="hero-tag"><div class="hero-tag-dot"></div><span>Content Studio</span></div>
-      <h1>ContentOS</h1>
-      <p>Turn any idea into content that compounds.</p>
-    </div>
-  </div>
-
-  <div class="app-shell">
-    <div class="sidebar">
-      <button class="new-btn" onclick="resetApp()">
-        <span style="font-size:16px;line-height:1">+</span> New content
-      </button>
-      <div class="sidebar-label">History</div>
-      <div id="history-list">
-        <div class="hist-empty">No saved content yet.<br/>Generate your first package.</div>
-      </div>
-    </div>
-
-    <div class="main">
-      <!-- Step 1 -->
-      <div class="card">
-        <div class="card-title">Step 1 — What are you creating?</div>
-        <div class="type-grid">
-          <div class="type-btn selected" onclick="selectType(this,'transcript')" data-type="transcript">
-            <span class="type-label">Conversation</span><span class="type-sub">Fireside, podcast, interview</span>
-          </div>
-          <div class="type-btn" onclick="selectType(this,'panel')" data-type="panel">
-            <span class="type-label">Panel</span><span class="type-sub">Multiple speakers</span>
-          </div>
-          <div class="type-btn" onclick="selectType(this,'launch')" data-type="launch">
-            <span class="type-label">Product Launch</span><span class="type-sub">Announce something new</span>
-          </div>
-          <div class="type-btn" onclick="selectType(this,'blog')" data-type="blog">
-            <span class="type-label">Blog / Article</span><span class="type-sub">Written content</span>
-          </div>
-          <div class="type-btn" onclick="selectType(this,'campaign')" data-type="campaign">
-            <span class="type-label">Campaign Brief</span><span class="type-sub">Push a theme or idea</span>
-          </div>
-          <div class="type-btn" onclick="selectType(this,'announcement')" data-type="announcement">
-            <span class="type-label">Announcement</span><span class="type-sub">News, milestones, hires</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2 -->
-      <div class="card">
-        <div class="card-title" id="context-label">Step 2 — Details <span>— optional</span></div>
-        <div id="context-fields"></div>
-      </div>
-
-      <!-- Step 3 -->
-      <div class="card">
-        <div class="card-title" id="input-label">Step 3 — Transcript or Content</div>
-        <div class="dropzone" id="dropzone"
-          onclick="document.getElementById('file-input').click()"
-          ondragover="event.preventDefault();this.classList.add('drag')"
-          ondragleave="this.classList.remove('drag')"
-          ondrop="handleDrop(event)">
-          <div class="dz-title" id="dz-title">Drop a file here, or click to browse</div>
-          <div class="dz-sub">.txt · .md · .doc supported</div>
-        </div>
-        <input type="file" id="file-input" accept=".txt,.md,.doc,.docx" style="display:none" onchange="handleFile(event)" />
-        <div class="divider"><hr /><span>or paste below</span><hr /></div>
-        <textarea class="main-ta" id="main-content" placeholder="Paste your content here..." oninput="updateCharCount()"></textarea>
-        <div class="char-count" id="char-count"></div>
-      </div>
-
-      <div class="error" id="error-msg" style="display:none"></div>
-      <button class="cta" onclick="generate()">Generate Content Package →</button>
-      <div class="cta-sub">Strategic Summary · LinkedIn (4) · X Threads (3) · YouTube · Quote Bank · Titles & Thumbnails</div>
-    </div>
-  </div>
-</div>
-
-<!-- OUTPUT VIEW -->
-<div id="output-view">
-  <div class="app-shell">
-    <div class="sidebar">
-      <button class="new-btn" onclick="resetApp()">
-        <span style="font-size:16px;line-height:1">+</span> New content
-      </button>
-      <div class="sidebar-label">History</div>
-      <div id="history-list-output"></div>
-    </div>
-    <div class="main">
-      <div class="tabs" id="tabs"></div>
-      <div class="output-panel" id="output-panel"></div>
-      <div class="output-note">Click any section to edit · Changes auto-saved</div>
-    </div>
-  </div>
-</div>
-
-<script>
-var API_KEY = "sk-ant-YOUR-KEY-HERE";
-var currentType = "transcript";
-var speakerCount = 1;
-var currentEntryId = null;
-
-var TABS_VIDEO = [
-  { id:"summary",  label:"Summary",    accent:"#9333ea" },
-  { id:"linkedin", label:"LinkedIn",   accent:"#0A66C2" },
-  { id:"twitter",  label:"X / Twitter",accent:"#9333ea" },
-  { id:"youtube",  label:"YouTube",    accent:"#ef4444" },
-  { id:"quotes",   label:"Quotes",     accent:"#f59e0b" },
-  { id:"titles",   label:"Titles & Thumbnails", accent:"#10b981" }
-];
-var TABS_TEXT = [
-  { id:"summary",  label:"Summary",    accent:"#9333ea" },
-  { id:"linkedin", label:"LinkedIn",   accent:"#0A66C2" },
-  { id:"twitter",  label:"X / Twitter",accent:"#9333ea" },
-  { id:"quotes",   label:"Quotes",     accent:"#f59e0b" }
-];
-var VIDEO_TYPES = { transcript:true, panel:true };
-function getTabs(){ return VIDEO_TYPES[currentType] ? TABS_VIDEO : TABS_TEXT; }
-
-var state = { output:{}, activeTab:"summary", editing:{} };
-
-// ── Storage ────────────────────────────────────────────────────────────────────
-function saveEntry(id,entry){ try{ window.storage.set("entry:"+id, JSON.stringify(entry)); }catch(e){} }
-function loadEntry(id){ try{ var r=window.storage.get("entry:"+id); return r?JSON.parse(r.value):null; }catch(e){ return null; } }
-function saveIndex(idx){ try{ window.storage.set("index", JSON.stringify(idx)); }catch(e){} }
-function loadIndex(){ try{ var r=window.storage.get("index"); return r?JSON.parse(r.value):[]; }catch(e){ return []; } }
-function genId(){ return "e"+Date.now(); }
-
-// ── History ────────────────────────────────────────────────────────────────────
-function renderHistory(targetId, activeId){
-  var el=document.getElementById(targetId); if(!el) return;
-  var index=loadIndex();
-  if(!index.length){ el.innerHTML='<div class="hist-empty">No saved content yet.<br/>Generate your first package.</div>'; return; }
-  var html="";
-  for(var i=index.length-1;i>=0;i--){
-    var item=index[i];
-    var cls=item.id===activeId?" active":"";
-    html+='<div class="hist-item'+cls+'" onclick="loadFromHistory(\''+item.id+'\')"><div class="hist-type">'+item.type+'</div><div class="hist-title">'+escapeHtml(item.title)+'</div><div class="hist-date">'+item.date+'</div></div>';
-  }
-  el.innerHTML=html;
-}
-
-function loadFromHistory(id){
-  var entry=loadEntry(id); if(!entry) return;
-  currentType=entry.type; currentEntryId=id;
-  state.output=entry.output; state.editing={}; state.activeTab="summary";
-  var pill=document.getElementById("context-pill");
-  if(entry.title){ pill.textContent=entry.title; pill.style.display="block"; }
-  showOutputView(id);
-}
-
-// ── Type configs ───────────────────────────────────────────────────────────────
-var TYPE_CONFIG = {
-  transcript:{
-    contextLabel:"Step 2 — Conversation Details", inputLabel:"Step 3 — Transcript",
-    inputPlaceholder:"Paste your transcript here...",
-    contextHTML:function(){ return '<div class="meta-grid-3">'+field("speaker-name","Speaker Name","text","e.g. Kunal Shah")+field("speaker-role","Role","text","e.g. Founder, CRED")+selectField("format","Format",["Fireside Chat","Interview","Podcast","AMA","Keynote","Other"])+'</div>'; },
-    buildContext:function(){ var n=val("speaker-name"),r=val("speaker-role"),f=val("format"); var c="Content Type: Conversation / "+f+"\n"; if(n)c+="Speaker: "+n+"\n"; if(r)c+="Role: "+r+"\n"; return c; },
-    pillText:function(){ return val("speaker-name")||"Conversation"; }
-  },
-  panel:{
-    contextLabel:"Step 2 — Panel Details", inputLabel:"Step 3 — Transcript",
-    inputPlaceholder:"Paste the panel transcript here...",
-    contextHTML:function(){
-      var html='<div class="field" style="margin-bottom:12px"><label>Event / Panel Name</label><input type="text" id="panel-name" placeholder="e.g. SaaS Summit 2025" /></div>';
-      html+='<div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Speakers</div>';
-      html+='<div id="speakers-list">'+speakerRowHTML(0)+'</div>';
-      html+='<button class="add-speaker-btn" onclick="addSpeaker()">+ Add Speaker</button>';
-      return html;
-    },
-    buildContext:function(){
-      var pname=val("panel-name"); var c="Content Type: Panel Discussion\n"; if(pname)c+="Event: "+pname+"\n"; c+="Speakers:\n";
-      var rows=document.querySelectorAll(".speaker-row");
-      for(var i=0;i<rows.length;i++){ var inputs=rows[i].querySelectorAll("input"); if(inputs[0]&&inputs[0].value.trim()){ c+="- "+inputs[0].value.trim(); if(inputs[1]&&inputs[1].value.trim())c+=" ("+inputs[1].value.trim()+")"; c+="\n"; } }
-      return c;
-    },
-    pillText:function(){ return val("panel-name")||"Panel"; }
-  },
-  launch:{
-    contextLabel:"Step 2 — Launch Details", inputLabel:"Step 3 — Launch Brief",
-    inputPlaceholder:"Describe what you're launching...",
-    contextHTML:function(){ return '<div class="meta-grid">'+field("product-name","Product / Feature Name","text","e.g. Surge 10.0")+field("target-audience","Target Audience","text","e.g. Early-stage founders in SEA")+'</div>'; },
-    buildContext:function(){ var c="Content Type: Product Launch\n"; var p=val("product-name"),a=val("target-audience"); if(p)c+="Product: "+p+"\n"; if(a)c+="Audience: "+a+"\n"; return c; },
-    pillText:function(){ return val("product-name")||"Launch"; }
-  },
-  blog:{
-    contextLabel:"Step 2 — Article Details", inputLabel:"Step 3 — Article or Blog Post",
-    inputPlaceholder:"Paste your article or blog post here...",
-    contextHTML:function(){ return '<div class="meta-grid">'+field("blog-title","Article Title","text","e.g. Why Distribution Beats Product")+field("blog-author","Author","text","e.g. GV Ravishankar")+'</div>'; },
-    buildContext:function(){ var c="Content Type: Blog Post / Article\n"; var t=val("blog-title"),a=val("blog-author"); if(t)c+="Title: "+t+"\n"; if(a)c+="Author: "+a+"\n"; return c; },
-    pillText:function(){ return val("blog-title")||"Article"; }
-  },
-  campaign:{
-    contextLabel:"Step 2 — Campaign Details", inputLabel:"Step 3 — Campaign Brief",
-    inputPlaceholder:"Describe your campaign...",
-    contextHTML:function(){ return '<div class="meta-grid">'+field("campaign-name","Campaign Name","text","e.g. Founder Stories Season 2")+field("campaign-goal","Goal","text","e.g. Drive applications to Surge")+'</div>'; },
-    buildContext:function(){ var c="Content Type: Marketing Campaign\n"; var n=val("campaign-name"),g=val("campaign-goal"); if(n)c+="Campaign: "+n+"\n"; if(g)c+="Goal: "+g+"\n"; return c; },
-    pillText:function(){ return val("campaign-name")||"Campaign"; }
-  },
-  announcement:{
-    contextLabel:"Step 2 — Announcement Details", inputLabel:"Step 3 — Announcement Brief",
-    inputPlaceholder:"Describe what you're announcing...",
-    contextHTML:function(){ return '<div class="meta-grid">'+field("announce-title","Announcement Title","text","e.g. Peak XV leads Series B")+field("announce-type","Type","text","e.g. Investment, Milestone, Hire")+'</div>'; },
-    buildContext:function(){ var c="Content Type: Announcement\n"; var t=val("announce-title"),tp=val("announce-type"); if(t)c+="Title: "+t+"\n"; if(tp)c+="Type: "+tp+"\n"; return c; },
-    pillText:function(){ return val("announce-title")||"Announcement"; }
-  }
+const C = {
+  p50:"#faf5ff", p100:"#f3e8ff", p200:"#e9d5ff", p300:"#d8b4fe",
+  p400:"#c084fc", p500:"#a855f7", p600:"#9333ea", p700:"#7c3aed",
+  g50:"#f9fafb", g100:"#f3f4f6", g200:"#e5e7eb", g300:"#d1d5db",
+  g400:"#9ca3af", g500:"#6b7280", g600:"#4b5563", g700:"#374151",
+  g800:"#1f2937", g900:"#111827", white:"#ffffff",
+  red:"#ef4444", amber:"#f59e0b", emerald:"#10b981", blue:"#0A66C2",
 };
 
-function field(id,label,type,ph){ return '<div class="field"><label>'+label+'</label><input type="'+type+'" id="'+id+'" placeholder="'+ph+'" /></div>'; }
-function selectField(id,label,opts){ var o=opts.map(function(x){return '<option>'+x+'</option>';}).join(""); return '<div class="field"><label>'+label+'</label><select id="'+id+'">'+o+'</select></div>'; }
-function speakerRowHTML(idx){ return '<div class="speaker-row" id="srow-'+idx+'"><div class="field" style="margin:0"><label>Name</label><input type="text" placeholder="e.g. Rajan Anandan" /></div><div class="field" style="margin:0"><label>Role</label><input type="text" placeholder="e.g. MD, Peak XV" /></div>'+(idx>0?'<button class="remove-btn" onclick="removeSpeaker('+idx+')">×</button>':'<div></div>')+'</div>'; }
-function val(id){ var el=document.getElementById(id); return el?el.value.trim():""; }
+const TYPES = [
+  { id:"transcript",   label:"Conversation",   sub:"Fireside, podcast, interview", video:true  },
+  { id:"panel",        label:"Panel",          sub:"Multiple speakers",            video:true  },
+  { id:"launch",       label:"Product Launch", sub:"Announce something new",       video:false },
+  { id:"blog",         label:"Blog / Article", sub:"Written content",              video:false },
+  { id:"campaign",     label:"Campaign Brief", sub:"Push a theme or idea",         video:false },
+  { id:"announcement", label:"Announcement",   sub:"News, milestones, hires",      video:false },
+];
 
-function selectType(btn,type){
-  currentType=type;
-  document.querySelectorAll(".type-btn").forEach(function(b){b.classList.remove("selected");});
-  btn.classList.add("selected");
-  var cfg=TYPE_CONFIG[type];
-  document.getElementById("context-label").innerHTML=cfg.contextLabel+' <span>— optional</span>';
-  document.getElementById("input-label").textContent=cfg.inputLabel;
-  document.getElementById("main-content").placeholder=cfg.inputPlaceholder;
-  document.getElementById("context-fields").innerHTML=cfg.contextHTML();
-  speakerCount=1;
-}
-function addSpeaker(){ speakerCount++; var list=document.getElementById("speakers-list"); var div=document.createElement("div"); div.innerHTML=speakerRowHTML(speakerCount-1); list.appendChild(div.firstChild); }
-function removeSpeaker(idx){ var row=document.getElementById("srow-"+idx); if(row)row.parentNode.removeChild(row); }
+const SECTIONS = [
+  { id:"summary",  label:"Strategic Summary",   accent:C.p600    },
+  { id:"linkedin", label:"LinkedIn",             accent:C.blue    },
+  { id:"twitter",  label:"X / Twitter",          accent:C.p500    },
+  { id:"youtube",  label:"YouTube",              accent:C.red     },
+  { id:"quotes",   label:"Quote Bank",           accent:C.amber   },
+  { id:"titles",   label:"Titles & Thumbnails",  accent:C.emerald },
+];
 
-// ── System prompt ──────────────────────────────────────────────────────────────
-function buildSystemPrompt(ctx){
-  var isConv=currentType==="transcript"||currentType==="panel";
-  var isPanel=currentType==="panel";
-  var isVideo=!!VIDEO_TYPES[currentType];
-  var base="You are Chief Content Officer at Peak XV ($9B+ VC). Content for founders and operators. Published from @PeakXVPartners.\n";
-  if(isConv) base+="Open posts with 'We sat down with [Speaker]...' Peak XV is publisher, speaker is subject.\n";
-  else base+="Editorial voice — Peak XV sharing insights with the founder community.\n";
-  if(isPanel) base+="PANEL: Quote each speaker individually.\n";
-  base+="No cliches. Specific. Insight-led.\nCONTEXT: "+ctx+"\n\n"
-    +"Use EXACT headers:\n\n"
-    +"---STRATEGIC SUMMARY---\n"
-    +"ABOUT: 1-2 sentences.\n"
-    +"THEMES:\n- Theme 1\n- Theme 2\n- Theme 3\n"
-    +"FOR FOUNDERS: 1-2 sentences.\n";
-  if(isConv) base+="TOP CLIPS:\n1. Title — reason\n2. Title — reason\n3. Title — reason\n4. Title — reason\n5. Title — reason\n";
-  base+="\n---LINKEDIN POSTS---\n"
-    +"[POST 1]\n(100-130 words. Strong hook. 2-3 takeaways. End with question.)\n\n"
-    +"[POST 2]\n(100-130 words. Different angle.)\n\n"
-    +"[POST 3]\n(100-130 words. Different angle.)\n\n"
-    +"---X POSTS---\n"
-    +"[POST 1]\n(Single. Max 280 chars.)\n\n"
-    +"[POST 2]\n(Single. Max 280 chars.)\n\n"
-    +"[POST 3]\n(Single. Max 280 chars.)\n\n"
-    +"[POST 4]\n(Single. Max 280 chars.)\n\n"
-    +"[POST 5]\n(Single. Max 280 chars.)\n\n"
-    +"[POST 6]\n(Thread. 5 tweets. Numbered 1/ 2/ 3/ 4/ 5/.)\n\n"
-    +"---QUOTE BANK---\n"
-    +"6 quotes. Format: \"Quote\" — Speaker\n\n";
-  if(isVideo){
-    base+="---YOUTUBE---\n"
-      +"TITLE: ...\nDESCRIPTION: 2-3 sentences.\n\n"
-      +"---TITLES AND THUMBNAILS---\n"
-      +"FULL VIDEO: Title / Thumbnail: concept\n"
-      +"CLIP 1: Title / Thumbnail: concept\n"
-      +"CLIP 2: Title / Thumbnail: concept\n"
-      +"CLIP 3: Title / Thumbnail: concept\n"
-      +"CLIP 4: Title / Thumbnail: concept\n"
-      +"CLIP 5: Title / Thumbnail: concept\n";
+const TONES = ["Thought Leadership","Storytelling","Educational","Announcement"];
+
+const DEF_SEL = { summary:true, linkedin:true, twitter:true, youtube:true, quotes:true, titles:true };
+
+const DEF_BRAND = "Peak XV Partners — Brand Voice Guidelines\n\n"
+  + "Audience: Early-stage and growth-stage founders, operators, and aspiring builders in India and Southeast Asia.\n\n"
+  + "Voice: Authoritative but warm. A trusted partner to founders, not a broadcaster. We share insight, not noise.\n\n"
+  + "Tone: Confident, specific, grounded. No hype, no cliches, no hero worship.\n\n"
+  + "Always write from @PeakXVPartners handle. Founders and speakers are the subject. Peak XV is the publisher.\n\n"
+  + "Avoid: Generic listicles, over-polished corporate language, vague motivational content.\n\n"
+  + "Optimize for: Specific takeaways, memorable frameworks, evergreen founder relevance.\n\n"
+  + "EXAMPLE POINTER-FORMAT LINKEDIN POST — use this exact structure for POST 2:\n"
+  + "---\n"
+  + "Vinod Khosla (Khosla Ventures) is the visionary investor known for backing OpenAI, DoorDash, Square, and many more iconic companies. "
+  + "In a candid conversation with Rajan Anandan at our Surge Immersion, Vinod revealed the principles guiding his legendary bets. Watch here: [link]\n\n"
+  + "A rundown of what you will learn:\n"
+  + "🚀 Contrarian thinking — the importance of going against the grain and being bold enough to build something revolutionary.\n"
+  + "🚀 Identifying world-class founding teams — including Vinod's hands-on approach to interviewing founders.\n"
+  + "🚀 Why failure fuels innovation — and how to embrace intelligent experimentation.\n"
+  + "🚀 Discovering categories before they become mainstream — lessons from FinTech, DevOps, and beyond.\n"
+  + "🚀 Scaling breakthrough technologies — turning pilot projects into industry-defining infrastructure.\n"
+  + "🚀 The future of AI — from AI-designed AI to agentic systems and exponential capability growth.\n\n"
+  + "Learn from the legendary investor who consistently bets on the impossible.\n"
+  + "---\n"
+  + "Adapt this format exactly. Replace names and event with the relevant details from the content.";
+
+const PHRASES = [
+  "Hold on... Potter!","It's in the works.","Bribing the algorithm...",
+  "Extracting the gold.","Making words do things.","Almost there, promise.",
+  "Cooking something good.","This one's worth the wait.","Thinking like a founder...",
+  "Your content is becoming.","Still here. Still going.","Peak content incoming.",
+  "Reading between the lines.","One sec. Maybe two.","The vibes are loading.",
+];
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+var db = {
+  get: async function(k){ try{ var r=await window.storage.get(k); return r?JSON.parse(r.value):null; }catch(e){ return null; } },
+  set: async function(k,v){ try{ await window.storage.set(k,JSON.stringify(v)); }catch(e){} },
+  del: async function(k){ try{ await window.storage.delete(k); }catch(e){} },
+};
+
+// ── Prompt ────────────────────────────────────────────────────────────────────
+function buildPrompt(type, ctx, tone, sel, brand) {
+  var isConv  = type==="transcript" || type==="panel";
+  var isPanel = type==="panel";
+  var t       = TYPES.find(function(x){ return x.id===type; });
+  var isVideo = t ? t.video : false;
+  var p = brand + "\n\nTONE: " + tone + "\nCONTEXT: " + ctx + "\n\n";
+  if (isConv)  p += "Auto-detect speaker names and roles from the transcript.\n";
+  if (isPanel) p += "Auto-detect all panel speakers. Quote each individually.\n";
+  p += "Plain text only. No markdown, no bold, no headings.\n";
+  p += "Generate ONLY the sections listed. Use EXACT section headers.\n\n";
+  if (sel.summary) {
+    p += "---STRATEGIC SUMMARY---\n";
+    p += "ABOUT: 1-2 sentences.\n";
+    p += "THEMES:\n- Theme 1\n- Theme 2\n- Theme 3\n";
+    p += "FOR FOUNDERS: 1-2 sentences.\n";
+    if (isConv) p += "TOP CLIPS:\n1. Title - reason\n2. Title - reason\n3. Title - reason\n4. Title - reason\n5. Title - reason\n";
+    p += "\n";
   }
-  return base;
-}
-
-// ── Parse ──────────────────────────────────────────────────────────────────────
-function parseOutput(raw){
-  var keys=["STRATEGIC SUMMARY","LINKEDIN POSTS","X POSTS","YOUTUBE","QUOTE BANK","TITLES AND THUMBNAILS"];
-  var map={"STRATEGIC SUMMARY":"summary","LINKEDIN POSTS":"linkedin","X POSTS":"twitter","YOUTUBE":"youtube","QUOTE BANK":"quotes","TITLES AND THUMBNAILS":"titles"};
-  var result={};
-  for(var i=0;i<keys.length;i++){
-    var key=keys[i]; var sm="---"+key+"---"; var si=raw.indexOf(sm); var content="";
-    if(si!==-1){
-      var as=raw.indexOf("\n",si)+1; var ei=raw.length;
-      for(var j=i+1;j<keys.length;j++){ var nm="---"+keys[j]+"---"; var ni=raw.indexOf(nm,as); if(ni!==-1&&ni<ei)ei=ni; }
-      content=raw.substring(as,ei).trim();
-    }
-    result[map[key]]=content;
+  if (sel.linkedin) {
+    p += "---LINKEDIN POSTS---\n";
+    p += "[POST 1]\n100-130 words. Strong narrative hook. 2-3 punchy takeaways. Ends with a question. @PeakXVPartners voice.\n\n";
+    p += "[POST 2]\nPOINTER FORMAT: First sentence introduces the speaker and session context. Second line is a video link placeholder. Third line is 'A rundown of what you will learn:'. Then 5-6 bullet points each starting with the rocket emoji, each a specific insight. End with one punchy sign-off line.\n\n";
+    p += "[POST 3]\n100-130 words. Storytelling angle. One specific moment or turning point. Personal and specific.\n\n";
   }
-  return result;
-}
-function splitPosts(text){ var parts=text.split(/\[POST \d+\]/); var r=[]; for(var i=0;i<parts.length;i++){var p=parts[i].trim();if(p)r.push(p);} return r; }
-
-// ── File ──────────────────────────────────────────────────────────────────────
-function handleFile(e){ var f=e.target.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(ev){document.getElementById("main-content").value=ev.target.result;document.getElementById("dz-title").textContent="Loaded: "+f.name;updateCharCount();}; r.readAsText(f); }
-function handleDrop(e){ e.preventDefault(); document.getElementById("dropzone").classList.remove("drag"); var f=e.dataTransfer.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(ev){document.getElementById("main-content").value=ev.target.result;document.getElementById("dz-title").textContent="Loaded: "+f.name;updateCharCount();}; r.readAsText(f); }
-function updateCharCount(){ var len=document.getElementById("main-content").value.length; document.getElementById("char-count").textContent=len>0?len.toLocaleString()+" chars":""; }
-
-// ── Generate ───────────────────────────────────────────────────────────────────
-function generate(){
-  var content=document.getElementById("main-content").value.trim();
-  var errEl=document.getElementById("error-msg"); errEl.style.display="none";
-  if(!content){showError("Please add your content first.");return;}
-  var cfg=TYPE_CONFIG[currentType];
-  var systemPrompt=buildSystemPrompt(cfg.buildContext());
-  document.getElementById("loading-screen").style.display="flex";
-  fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST",
-    headers:{"Content-Type":"application/json","x-api-key":API_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","anthropic-beta":"max-tokens-3-5-sonnet-2024-07-15"},
-    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:6000,system:systemPrompt,messages:[{role:"user",content:"CONTENT INPUT:\n"+content}]})
-  })
-  .then(function(res){return res.json();})
-  .then(function(data){
-    document.getElementById("loading-screen").style.display="none";
-    if(data.error){showError("API error: "+data.error.message+" ("+data.error.type+")");return;}
-    if(!data.content||!data.content.length){showError("Empty response from API. Check your API key.");return;}
-    var raw=""; if(data.content){for(var i=0;i<data.content.length;i++){if(data.content[i].text)raw+=data.content[i].text;}}
-    var parsed=parseOutput(raw);
-    state.output=parsed; state.editing={}; state.activeTab="summary";
-    var pillText=cfg.pillText();
-    var pill=document.getElementById("context-pill");
-    if(pillText){pill.textContent=pillText;pill.style.display="block";}
-    var id=genId(); currentEntryId=id;
-    var entry={id:id,type:currentType,title:pillText,date:new Date().toLocaleDateString(),output:parsed};
-    saveEntry(id,entry);
-    var idx=loadIndex(); idx.push({id:id,type:currentType,title:pillText,date:entry.date}); saveIndex(idx);
-    showOutputView(id);
-  })
-  .catch(function(err){document.getElementById("loading-screen").style.display="none";showError("Network error: "+err.message+". Check your API key and internet connection.");});
-}
-function showError(msg){var el=document.getElementById("error-msg");el.textContent=msg;el.style.display="block";}
-
-// ── Output ─────────────────────────────────────────────────────────────────────
-function showOutputView(activeId){
-  document.getElementById("input-view").style.display="none";
-  document.getElementById("output-view").style.display="block";
-  document.getElementById("header-output-btns").style.display="flex";
-  renderHistory("history-list-output",activeId);
-  renderTabs(); renderPanel();
-}
-function renderTabs(){
-  var el=document.getElementById("tabs"); var html=""; var tabs=getTabs();
-  for(var i=0;i<tabs.length;i++){ var t=tabs[i]; html+='<button class="tab-btn'+(state.activeTab===t.id?" active":"")+'" onclick="switchTab(\''+t.id+'\')">'+t.label+'</button>'; }
-  el.innerHTML=html;
-}
-function switchTab(id){state.activeTab=id;renderTabs();renderPanel();}
-function renderPanel(){
-  var panel=document.getElementById("output-panel"); var tabs=getTabs(); var tab=null;
-  for(var i=0;i<tabs.length;i++){if(tabs[i].id===state.activeTab){tab=tabs[i];break;}}
-  if(!tab){state.activeTab=tabs[0].id;tab=tabs[0];renderTabs();}
-  var html="";
-  if(state.activeTab==="linkedin"||state.activeTab==="twitter"){
-    var posts=splitPosts(state.output[state.activeTab]||"");
-    var lbl=state.activeTab==="linkedin"?"LinkedIn Post":"X Post";
-    for(var j=0;j<posts.length;j++){
-      var key=state.activeTab+"_"+j;
-      var v=state.editing[key]!==undefined?state.editing[key]:posts[j];
-      html+=renderSection(key,lbl+" "+(j+1),v,tab.accent);
-    }
-  } else {
-    var v2=state.editing[state.activeTab]!==undefined?state.editing[state.activeTab]:(state.output[state.activeTab]||"");
-    html+=renderSection(state.activeTab,tab.label,v2,tab.accent);
+  if (sel.twitter) {
+    p += "---X POSTS---\n";
+    p += "[POST 1]\nQuote post. The single most striking quote then 1-2 lines on why it matters.\n\n";
+    p += "[POST 2]\nTakeaways list. 4-5 sharp numbered points on one topic from the content.\n\n";
+    p += "[POST 3]\nHot take. One bold opinionated statement. 2-3 lines max.\n\n";
+    p += "[POST 4]\nStat or specific fact. Lead with the number or data point. 1-2 lines of context.\n\n";
+    p += "[POST 5]\nQuestion post. Pose a question the content raises or answers. Drives replies.\n\n";
+    p += "[POST 6]\nThread. 5 tweets numbered 1/ 2/ 3/ 4/ 5/. One strong idea built progressively.\n\n";
   }
-  html+='<div class="panel-footer"><button class="btn-sm" onclick="exportMd()">↓ Export .md</button><button class="btn-sm" onclick="copyAll()">Copy all</button></div>';
-  panel.innerHTML=html;
-}
-
-function escapeHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-function escapeAttr(s){return s.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\n/g,"\\n").replace(/\r/g,"");}
-
-function formatContent(text){
-  // Convert raw text into clean styled HTML
-  var lines=text.split("\n");
-  var html="";
-  for(var i=0;i<lines.length;i++){
-    var line=lines[i];
-    var trimmed=line.trim();
-    if(!trimmed){html+="<div style='height:10px'></div>";continue;}
-    // ALL CAPS label like "CORE THEMES:" or "WHY IT MATTERS:"
-    if(/^[A-Z][A-Z\s\-:]+:$/.test(trimmed)||/^[A-Z][A-Z\s]+$/.test(trimmed)){
-      html+='<div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:0.09em;margin:14px 0 6px">'
-        +escapeHtml(trimmed)+'</div>';
-      continue;
-    }
-    // Numbered list: "1. ..." or "2. ..."
-    if(/^\d+\.\s/.test(trimmed)){
-      var content=trimmed.replace(/^\d+\.\s*/,"");
-      var num=trimmed.match(/^(\d+)\./)[1];
-      html+='<div style="display:flex;gap:10px;margin-bottom:7px;align-items:flex-start">'
-        +'<span style="font-size:11px;font-weight:700;color:var(--p500);min-width:18px;padding-top:2px">'+num+'</span>'
-        +'<span style="font-size:13.5px;line-height:1.7;color:var(--gray700)">'+escapeHtml(content)+'</span>'
-        +'</div>';
-      continue;
-    }
-    // Bullet: "- ..."
-    if(/^[-•]\s/.test(trimmed)){
-      var content=trimmed.replace(/^[-•]\s*/,"");
-      html+='<div style="display:flex;gap:9px;margin-bottom:6px;align-items:flex-start">'
-        +'<span style="color:var(--p400);font-size:14px;line-height:1.6;flex-shrink:0">·</span>'
-        +'<span style="font-size:13.5px;line-height:1.65;color:var(--gray700)">'+escapeHtml(content)+'</span>'
-        +'</div>';
-      continue;
-    }
-    // Key: value line like "TITLE: ..." or "Week 1: ..."
-    if(/^[A-Za-z\s]+:\s.+/.test(trimmed)&&trimmed.indexOf(":")<30){
-      var colon=trimmed.indexOf(":");
-      var key=trimmed.substring(0,colon);
-      var val=trimmed.substring(colon+1).trim();
-      html+='<div style="margin-bottom:7px">'
-        +'<span style="font-size:11px;font-weight:700;color:var(--gray500);text-transform:uppercase;letter-spacing:0.06em">'+escapeHtml(key)+'</span>'
-        +'<span style="font-size:13px;color:var(--gray400)"> — </span>'
-        +'<span style="font-size:13.5px;color:var(--gray800)">'+escapeHtml(val)+'</span>'
-        +'</div>';
-      continue;
-    }
-    // Quote line: starts with "
-    if(trimmed.charAt(0)==='"'){
-      html+='<div style="border-left:3px solid var(--p300);padding:8px 14px;margin-bottom:10px;background:var(--p50);border-radius:0 8px 8px 0">'
-        +'<span style="font-size:13.5px;line-height:1.7;color:var(--gray800);font-style:italic">'+escapeHtml(trimmed)+'</span>'
-        +'</div>';
-      continue;
-    }
-    // Default paragraph
-    html+='<p style="font-size:13.5px;line-height:1.75;color:var(--gray700);margin-bottom:7px">'+escapeHtml(trimmed)+'</p>';
+  if (sel.quotes) {
+    p += "---QUOTE BANK---\n";
+    p += "6 quotes. Format: Quote text - Speaker name\n\n";
   }
-  return html;
-}
-
-function renderSection(key,label,val,accent){
-  var isEditing=state.editing["__edit_"+key]===true;
-  var escaped=escapeHtml(val); var attrVal=escapeAttr(val);
-  if(isEditing){
-    return '<div class="section"><div class="sec-header"><div class="sec-title-row"><div class="accent-bar" style="background:'+accent+'"></div><span class="sec-label">'+label+'</span></div><div class="sec-actions"><button class="btn-save" onclick="saveEdit(\''+key+'\')">Save</button><button class="btn-cancel" onclick="cancelEdit(\''+key+'\')">Cancel</button></div></div><textarea class="sec-textarea" id="ta-'+key+'" rows="10">'+escaped+'</textarea></div>';
+  if (isVideo && sel.youtube) {
+    p += "---YOUTUBE---\n";
+    p += "TITLE 1: Direct and specific, names the speaker and core topic\n";
+    p += "TITLE 2: Curiosity-driven, poses a tension or question\n";
+    p += "TITLE 3: Outcome-led, what viewers will learn or gain\n";
+    p += "TITLE 4: Bold or contrarian, a strong claim or surprising angle\n\n";
+    p += "DESCRIPTION 1:\n3-4 sentences. Speaker credibility, what the conversation covers, why founders should watch.\n\n";
+    p += "DESCRIPTION 2:\n3-4 sentences. Opens with a provocative question. 2-3 biggest ideas. Ends with a call to watch.\n\n";
   }
-  return '<div class="section"><div class="sec-header"><div class="sec-title-row"><div class="accent-bar" style="background:'+accent+'"></div><span class="sec-label">'+label+'</span></div><div class="sec-actions"><button class="btn-sm" onclick="startEdit(\''+key+'\',\''+attrVal+'\')">Edit</button><button class="btn-sm" onclick="copyText(\''+attrVal+'\')">Copy</button></div></div>'
-    +'<div class="sec-content" onclick="startEdit(\''+key+'\',\''+attrVal+'\')">'+formatContent(val)+'<div class="click-hint">Click to edit</div></div></div>';
-}
-
-function startEdit(key,val){
-  val=val.replace(/\\n/g,"\n").replace(/\\'/g,"'").replace(/\\\\/g,"\\");
-  state.editing["__edit_"+key]=true; state.editing[key]=val; renderPanel();
-  setTimeout(function(){var ta=document.getElementById("ta-"+key);if(ta)ta.focus();},50);
-}
-function saveEdit(key){
-  var ta=document.getElementById("ta-"+key);
-  if(ta){
-    state.editing[key]=ta.value;
-    if(key.indexOf("linkedin_")===0||key.indexOf("twitter_")===0){
-      var parts=key.split("_"),base=parts[0],idx=parseInt(parts[1]);
-      var posts=splitPosts(state.output[base]||""); posts[idx]=ta.value; state.output[base]=posts.join("\n\n");
-    } else { state.output[key]=ta.value; }
-    if(currentEntryId){ var entry=loadEntry(currentEntryId); if(entry){entry.output=state.output;saveEntry(currentEntryId,entry);} }
+  if (isVideo && sel.titles) {
+    p += "---TITLES AND THUMBNAILS---\n";
+    p += "FULL VIDEO: Title / Thumbnail: concept\n";
+    p += "CLIP 1: Title / Thumbnail: concept\n";
+    p += "CLIP 2: Title / Thumbnail: concept\n";
+    p += "CLIP 3: Title / Thumbnail: concept\n";
+    p += "CLIP 4: Title / Thumbnail: concept\n";
+    p += "CLIP 5: Title / Thumbnail: concept\n\n";
   }
-  state.editing["__edit_"+key]=false; renderPanel();
-}
-function cancelEdit(key){state.editing["__edit_"+key]=false;delete state.editing[key];renderPanel();}
-function copyText(val){val=val.replace(/\\n/g,"\n").replace(/\\'/g,"'").replace(/\\\\/g,"\\");navigator.clipboard.writeText(val);}
-function copyAll(){
-  var keys=["summary","linkedin","twitter","youtube","quotes","titles"],parts=[];
-  for(var i=0;i<keys.length;i++){if(state.output[keys[i]])parts.push(state.output[keys[i]]);}
-  navigator.clipboard.writeText(parts.join("\n\n---\n\n"));
-}
-function exportMd(){
-  var cfg=TYPE_CONFIG[currentType]; var pill=cfg.pillText();
-  var lines="# ContentOS — Peak XV Content Package\n**Type:** "+currentType+"\n";
-  if(pill)lines+="**Subject:** "+pill+"\n";
-  lines+="**Generated:** "+new Date().toLocaleDateString()+"\n\n---\n\n";
-  lines+="## Strategic Summary\n"+(state.output.summary||"")+"\n\n## LinkedIn Posts\n"+(state.output.linkedin||"")+"\n\n## X / Twitter\n"+(state.output.twitter||"")+"\n\n## YouTube\n"+(state.output.youtube||"")+"\n\n## Quote Bank\n"+(state.output.quotes||"")+"\n\n## Titles and Thumbnails\n"+(state.output.titles||"");
-  var blob=new Blob([lines],{type:"text/markdown"}); var a=document.createElement("a");
-  a.href=URL.createObjectURL(blob); a.download="contentos-"+Date.now()+".md"; a.click();
-}
-function resetApp(){
-  document.getElementById("input-view").style.display="block";
-  document.getElementById("output-view").style.display="none";
-  document.getElementById("header-output-btns").style.display="none";
-  document.getElementById("context-pill").style.display="none";
-  document.getElementById("main-content").value="";
-  document.getElementById("char-count").textContent="";
-  document.getElementById("dz-title").textContent="Drop a file here, or click to browse";
-  document.getElementById("error-msg").style.display="none";
-  state.output={}; state.editing={}; currentEntryId=null;
-  renderHistory("history-list",null);
+  return p;
 }
 
-selectType(document.querySelector(".type-btn[data-type='transcript']"),"transcript");
-renderHistory("history-list",null);
-</script>
-</body>
-</html>
+// ── Parse ─────────────────────────────────────────────────────────────────────
+function parseOut(raw) {
+  var keys = ["STRATEGIC SUMMARY","LINKEDIN POSTS","X POSTS","YOUTUBE","QUOTE BANK","TITLES AND THUMBNAILS"];
+  var map  = { "STRATEGIC SUMMARY":"summary","LINKEDIN POSTS":"linkedin","X POSTS":"twitter","YOUTUBE":"youtube","QUOTE BANK":"quotes","TITLES AND THUMBNAILS":"titles" };
+  var res  = {};
+  for (var i=0; i<keys.length; i++) {
+    var sm  = "---"+keys[i]+"---";
+    var si  = raw.indexOf(sm);
+    if (si===-1){ res[map[keys[i]]]=""; continue; }
+    var as  = raw.indexOf("\n",si)+1;
+    var ei  = raw.length;
+    for (var j=i+1; j<keys.length; j++) {
+      var ni = raw.indexOf("---"+keys[j]+"---",as);
+      if (ni!==-1 && ni<ei) ei=ni;
+    }
+    res[map[keys[i]]] = raw.substring(as,ei).trim();
+  }
+  return res;
+}
+
+function splitPosts(text) {
+  var parts = text.split(/\[POST\s*\d+\]/i);
+  return parts.map(function(p){ return p.trim(); }).filter(Boolean);
+}
+
+// ── Formatter ─────────────────────────────────────────────────────────────────
+function clean(line) {
+  return line.replace(/\*\*(.+?)\*\*/g,"$1").replace(/\*(.+?)\*/g,"$1").replace(/^#{1,4}\s+/,"").replace(/^>\s+/,"").trim();
+}
+
+function Fmt({ text }) {
+  var lines = (text||"").split("\n");
+  return (
+    <div>
+      {lines.map(function(line,i){
+        var raw = line.trim();
+        var t   = clean(raw);
+        if (!t) return <div key={i} style={{height:8}} />;
+        if (/^[A-Z][A-Z\s\-]+:?\s*$/.test(t))
+          return <div key={i} style={{fontSize:10,fontWeight:700,color:C.g400,textTransform:"uppercase",letterSpacing:"0.09em",margin:"14px 0 6px"}}>{t}</div>;
+        if (/^\d+[/.]\s/.test(t)) {
+          var num = t.match(/^(\d+)/)[1];
+          var cnt = t.replace(/^\d+[/.]\s*/,"");
+          return <div key={i} style={{display:"flex",gap:10,marginBottom:7,alignItems:"flex-start"}}>
+            <span style={{fontSize:11,fontWeight:700,color:C.p500,minWidth:18,paddingTop:2}}>{num}</span>
+            <span style={{fontSize:13.5,lineHeight:1.7,color:C.g700}}>{cnt}</span>
+          </div>;
+        }
+        if (/^[-•🚀]\s/.test(raw)) {
+          var b   = raw.charAt(0)==="🚀"?"🚀":"·";
+          var c2  = clean(raw.replace(/^[-•🚀]\s*/,""));
+          return <div key={i} style={{display:"flex",gap:9,marginBottom:6,alignItems:"flex-start"}}>
+            <span style={{color:C.p400,fontSize:14,lineHeight:1.6,flexShrink:0}}>{b}</span>
+            <span style={{fontSize:13.5,lineHeight:1.65,color:C.g700}}>{c2}</span>
+          </div>;
+        }
+        if (/^[A-Za-z\s\d]+:\s.+/.test(t) && t.indexOf(":")<30) {
+          var ci  = t.indexOf(":");
+          return <div key={i} style={{marginBottom:7}}>
+            <span style={{fontSize:11,fontWeight:700,color:C.g500,textTransform:"uppercase",letterSpacing:"0.06em"}}>{t.substring(0,ci)}</span>
+            <span style={{fontSize:13,color:C.g400}}> — </span>
+            <span style={{fontSize:13.5,color:C.g800}}>{t.substring(ci+1).trim()}</span>
+          </div>;
+        }
+        if (t.charAt(0)==='"')
+          return <div key={i} style={{borderLeft:"3px solid "+C.p300,padding:"8px 14px",marginBottom:10,background:C.p50,borderRadius:"0 8px 8px 0"}}>
+            <span style={{fontSize:13.5,lineHeight:1.7,color:C.g800,fontStyle:"italic"}}>{t}</span>
+          </div>;
+        return <p key={i} style={{fontSize:13.5,lineHeight:1.75,color:C.g700,marginBottom:7}}>{t}</p>;
+      })}
+    </div>
+  );
+}
+
+// ── Tiny components ───────────────────────────────────────────────────────────
+function CopyBtn({ text, small }) {
+  var [cp,setCp] = useState(false);
+  return (
+    <button onClick={function(){ navigator.clipboard.writeText(text||""); setCp(true); setTimeout(function(){ setCp(false); },2000); }}
+      style={{padding:small?"4px 10px":"6px 12px",fontSize:11,fontWeight:500,borderRadius:6,
+        border:"1px solid "+(cp?"#a7f3d0":C.g200),background:cp?"#ecfdf5":C.white,
+        color:cp?C.emerald:C.g500,cursor:"pointer",fontFamily:"inherit"}}>
+      {cp?"Copied":"Copy"}
+    </button>
+  );
+}
+
+function Sec({ id, accent, content, onSave }) {
+  var [edit,setEdit] = useState(false);
+  var [val,setVal]   = useState(content);
+  useEffect(function(){ setVal(content); },[content]);
+  var isLI = id.startsWith("linkedin");
+  var isTW = id.startsWith("twitter") && !id.endsWith("_5");
+  function save(){ onSave(val); setEdit(false); }
+  function cancel(){ setVal(content); setEdit(false); }
+  if (edit) return (
+    <div>
+      <textarea value={val} onChange={function(e){ setVal(e.target.value); }} autoFocus
+        style={{width:"100%",padding:"12px 14px",border:"2px solid "+C.p400,borderRadius:10,
+          fontSize:13.5,lineHeight:1.75,color:C.g900,resize:"vertical",outline:"none",
+          background:C.p50,fontFamily:"inherit",minHeight:160,boxSizing:"border-box"}} />
+      {isLI && <div style={{fontSize:11,textAlign:"right",marginTop:4,color:val.length>3000?C.red:val.length>2500?C.amber:C.g400}}>{val.length}/3000</div>}
+      {isTW && <div style={{fontSize:11,textAlign:"right",marginTop:4,color:val.length>280?C.red:val.length>240?C.amber:C.g400}}>{val.length}/280</div>}
+      <div style={{display:"flex",gap:6,marginTop:8}}>
+        <button onClick={save}   style={{padding:"4px 12px",fontSize:12,fontWeight:600,borderRadius:6,border:"1px solid "+C.p400,background:C.p50,color:C.p700,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+        <button onClick={cancel} style={{padding:"4px 10px",fontSize:12,borderRadius:6,border:"1px solid "+C.g200,background:C.white,color:C.g500,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+      </div>
+    </div>
+  );
+  return (
+    <div onClick={function(){ setEdit(true); }}
+      style={{background:C.g50,border:"1px solid "+C.g200,borderRadius:10,padding:"14px 16px",cursor:"text"}}>
+      <Fmt text={val} />
+      <div style={{fontSize:10,color:C.g300,marginTop:8}}>Click to edit</div>
+    </div>
+  );
+}
+
+function BrandModal({ value, onSave, onClose }) {
+  var [d,setD] = useState(value);
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{background:C.white,borderRadius:16,padding:28,width:"100%",maxWidth:600,boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:700,color:C.g900,marginBottom:4}}>Brand Guidelines</div>
+            <div style={{fontSize:12,color:C.g400}}>Prepended to every generation. Edit anytime.</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,color:C.g400,cursor:"pointer"}}>x</button>
+        </div>
+        <textarea value={d} onChange={function(e){ setD(e.target.value); }}
+          style={{width:"100%",padding:"12px 14px",border:"1.5px solid "+C.g200,borderRadius:10,
+            fontSize:13,lineHeight:1.7,color:C.g800,resize:"vertical",outline:"none",
+            fontFamily:"inherit",minHeight:280,boxSizing:"border-box"}} />
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14}}>
+          <button onClick={onClose} style={{padding:"8px 16px",fontSize:13,borderRadius:8,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+          <button onClick={function(){ onSave(d); onClose(); }} style={{padding:"8px 18px",fontSize:13,fontWeight:600,borderRadius:8,border:"none",background:C.p600,color:C.white,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RegenModal({ label, loading, onRegen, onClose }) {
+  var [inst,setInst] = useState("");
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{background:C.white,borderRadius:16,padding:24,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}>
+        <div style={{fontSize:15,fontWeight:700,color:C.g900,marginBottom:6}}>Regenerate — {label}</div>
+        <div style={{fontSize:12,color:C.g400,marginBottom:14}}>Give a specific instruction or leave blank to regenerate fresh.</div>
+        <input value={inst} onChange={function(e){ setInst(e.target.value); }} placeholder="e.g. Make it more casual"
+          style={{width:"100%",padding:"10px 12px",border:"1.5px solid "+C.g200,borderRadius:8,fontSize:13.5,color:C.g900,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}} />
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14}}>
+          <button onClick={onClose} style={{padding:"8px 14px",fontSize:13,borderRadius:8,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+          <button onClick={function(){ onRegen(inst); }} disabled={loading}
+            style={{padding:"8px 18px",fontSize:13,fontWeight:600,borderRadius:8,border:"none",
+              background:loading?C.g200:C.p600,color:loading?C.g400:C.white,cursor:loading?"not-allowed":"pointer",fontFamily:"inherit"}}>
+            {loading?"Regenerating...":"Regenerate"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingScreen({ phrase }) {
+  var [dots,setDots]     = useState("");
+  var [prog,setProg]     = useState(8);
+  useEffect(function(){
+    var d = setInterval(function(){ setDots(function(p){ return p.length>=3?"":p+"."; }); },500);
+    var p = setInterval(function(){ setProg(function(v){ return Math.min(v+Math.random()*3.5,92); }); },900);
+    return function(){ clearInterval(d); clearInterval(p); };
+  },[]);
+  return (
+    <div style={{position:"fixed",inset:0,background:"linear-gradient(135deg,#7c3aed,#4c1d95)",zIndex:400,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+      <style>{"@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}"}</style>
+      <div style={{width:56,height:56,background:"rgba(255,255,255,0.15)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:22,color:"white",marginBottom:28,animation:"pulse 2s ease-in-out infinite"}}>C</div>
+      <div style={{fontSize:22,fontWeight:700,color:"white",letterSpacing:"-0.02em",marginBottom:8,textAlign:"center",minHeight:34}}>{phrase}{dots}</div>
+      <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",marginBottom:36,textAlign:"center"}}>Generating your content package</div>
+      <div style={{width:"100%",maxWidth:320,height:3,background:"rgba(255,255,255,0.12)",borderRadius:99,overflow:"hidden",marginBottom:28}}>
+        <div style={{height:"100%",background:"rgba(255,255,255,0.85)",borderRadius:99,width:prog+"%",transition:"width 0.9s ease"}} />
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center",maxWidth:440}}>
+        {["Strategic Summary","LinkedIn (3)","X Posts (6)","Quote Bank","Titles & Thumbnails"].map(function(s){
+          return <div key={s} style={{padding:"4px 10px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:20,fontSize:11,color:"rgba(255,255,255,0.55)"}}>{s}</div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+export default function App() {
+  var [view,setView]           = useState("input");
+  var [ctype,setCtype]         = useState("transcript");
+  var [content,setContent]     = useState("");
+  var [tone,setTone]           = useState("Thought Leadership");
+  var [sel,setSel]             = useState(DEF_SEL);
+  var [loading,setLoading]     = useState(false);
+  var [regenLoad,setRegenLoad] = useState(false);
+  var [error,setError]         = useState("");
+  var [edited,setEdited]       = useState({});
+  var [tab,setTab]             = useState("summary");
+  var [hist,setHist]           = useState([]);
+  var [curId,setCurId]         = useState(null);
+  var [brand,setBrand]         = useState(DEF_BRAND);
+  var [showBrand,setShowBrand] = useState(false);
+  var [regenSec,setRegenSec]   = useState(null);
+  var [search,setSearch]       = useState("");
+  var [phrase,setPhrase]       = useState(PHRASES[0]);
+  var fileRef = useRef();
+
+  useEffect(function(){
+    db.get("index").then(function(v){ if(v) setHist(v); });
+    db.get("brandGuide").then(function(v){ if(v) setBrand(v); });
+  },[]);
+
+  useEffect(function(){
+    if (!loading) return;
+    setPhrase(PHRASES[Math.floor(Math.random()*PHRASES.length)]);
+    var iv = setInterval(function(){ setPhrase(PHRASES[Math.floor(Math.random()*PHRASES.length)]); },2800);
+    return function(){ clearInterval(iv); };
+  },[loading]);
+
+  var typeObj  = TYPES.find(function(t){ return t.id===ctype; });
+  var isVideo  = typeObj ? typeObj.video : false;
+  var visSecs  = SECTIONS.filter(function(s){ return isVideo || (s.id!=="youtube" && s.id!=="titles"); });
+
+  async function callAPI(msg, sys) {
+    var res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":API_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:MODEL,max_tokens:6000,system:sys,messages:[{role:"user",content:msg}]})
+    });
+    var d = await res.json();
+    if (d.error) throw new Error(d.error.message);
+    return (d.content||[]).map(function(b){ return b.text||""; }).join("");
+  }
+
+  async function generate() {
+    if (!content.trim()){ setError("Please add your content first."); return; }
+    setError("");
+    setPhrase(PHRASES[Math.floor(Math.random()*PHRASES.length)]);
+    setLoading(true);
+    await new Promise(function(r){ setTimeout(r,60); });
+    try {
+      var ctx    = "Content Type: "+(typeObj?typeObj.label:ctype)+"\n";
+      var prompt = buildPrompt(ctype,ctx,tone,sel,brand);
+      var raw    = await callAPI("CONTENT:\n"+content, prompt);
+      var parsed = parseOut(raw);
+      setEdited(parsed);
+      var id   = "e"+Date.now();
+      setCurId(id);
+      var lbl  = typeObj?typeObj.label:ctype;
+      var entry = {id:id,type:ctype,title:lbl,date:new Date().toLocaleDateString(),output:parsed};
+      await db.set("entry:"+id, entry);
+      var ni = hist.concat([{id:id,type:ctype,title:lbl,date:entry.date}]);
+      setHist(ni); await db.set("index",ni);
+      var ft = visSecs.find(function(s){ return sel[s.id]; });
+      setTab(ft?ft.id:"summary");
+      setView("output");
+    } catch(e){ setError("Error: "+e.message); }
+    setLoading(false);
+  }
+
+  async function regenFn(inst) {
+    if (!regenSec) return;
+    setRegenLoad(true);
+    try {
+      var s2 = {summary:false,linkedin:false,twitter:false,youtube:false,quotes:false,titles:false};
+      s2[regenSec.id] = true;
+      var ctx    = "Content Type: "+(typeObj?typeObj.label:ctype)+"\n";
+      var prompt = buildPrompt(ctype,ctx,tone,s2,brand);
+      var extra  = inst ? "\n\nSPECIFIC INSTRUCTION: "+inst : "";
+      var raw    = await callAPI("CONTENT:\n"+content+extra, prompt);
+      var parsed = parseOut(raw);
+      var upd    = Object.assign({},edited);
+      if (parsed[regenSec.id]) upd[regenSec.id] = parsed[regenSec.id];
+      setEdited(upd);
+      if (curId){ var e=await db.get("entry:"+curId); if(e){e.output=upd; await db.set("entry:"+curId,e);} }
+    } catch(e){ setError("Regen error: "+e.message); }
+    setRegenLoad(false); setRegenSec(null);
+  }
+
+  async function saveEdit(sid, nv) {
+    var upd = Object.assign({},edited); upd[sid]=nv; setEdited(upd);
+    if (curId){ var e=await db.get("entry:"+curId); if(e){e.output=upd; await db.set("entry:"+curId,e);} }
+  }
+
+  async function loadEntry(id) {
+    var e = await db.get("entry:"+id); if(!e) return;
+    setCtype(e.type); setCurId(id); setEdited(e.output); setTab("summary"); setView("output");
+  }
+
+  async function delEntry(id,ev) {
+    ev.stopPropagation(); await db.del("entry:"+id);
+    var ni = hist.filter(function(h){ return h.id!==id; });
+    setHist(ni); await db.set("index",ni);
+    if (curId===id){ setView("input"); setCurId(null); }
+  }
+
+  function exportMd(data) {
+    var d = data || edited;
+    var md = "# ContentOS Content Package\nType: "+ctype+"\nGenerated: "+new Date().toLocaleDateString()+"\n\n---\n\n";
+    ["summary","linkedin","twitter","youtube","quotes","titles"].forEach(function(k){ if(d[k]) md+="## "+k+"\n"+d[k]+"\n\n"; });
+    var b = new Blob([md],{type:"text/markdown"}); var a=document.createElement("a");
+    a.href=URL.createObjectURL(b); a.download="contentos-"+Date.now()+".md"; a.click();
+  }
+
+  function copyAll(data) {
+    var d = data || edited;
+    var pts = []; ["summary","linkedin","twitter","youtube","quotes","titles"].forEach(function(k){ if(d[k]) pts.push(d[k]); });
+    navigator.clipboard.writeText(pts.join("\n\n---\n\n"));
+  }
+
+  var filtHist = hist.filter(function(h){
+    return !search || h.title.toLowerCase().includes(search.toLowerCase()) || h.type.toLowerCase().includes(search.toLowerCase());
+  }).slice().reverse();
+
+  // ── Styles
+  var nav = {height:56,background:C.white,borderBottom:"1px solid "+C.g200,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 24px",position:"sticky",top:0,zIndex:100,fontFamily:"Inter,system-ui,sans-serif"};
+  var shell= {display:"flex",maxWidth:1100,margin:"0 auto",padding:"24px 20px",gap:20,alignItems:"flex-start",fontFamily:"Inter,system-ui,sans-serif"};
+  var card = {background:C.white,borderRadius:14,padding:"20px 22px",border:"1px solid "+C.g200,marginBottom:12,boxShadow:"0 1px 3px rgba(0,0,0,0.05)"};
+  var inp  = {width:"100%",padding:"9px 11px",border:"1.5px solid "+C.g200,borderRadius:8,fontSize:13.5,color:C.g900,outline:"none",background:C.white,fontFamily:"Inter,system-ui,sans-serif",boxSizing:"border-box"};
+
+  function Sidebar({ activeId }) {
+    return (
+      <div style={{width:220,flexShrink:0,position:"sticky",top:72}}>
+        <button onClick={function(){ setView("input"); setCurId(null); }}
+          style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"none",background:C.p600,color:C.white,fontSize:13,fontWeight:600,cursor:"pointer",marginBottom:10,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <span style={{fontSize:16}}>+</span> New content
+        </button>
+        <button onClick={function(){ setShowBrand(true); }}
+          style={{width:"100%",padding:"7px 12px",borderRadius:8,border:"1px solid "+C.g200,background:C.white,color:C.g600,fontSize:12,fontWeight:500,cursor:"pointer",marginBottom:12,fontFamily:"inherit"}}>
+          Brand Guidelines
+        </button>
+        <input value={search} onChange={function(e){ setSearch(e.target.value); }} placeholder="Search history..."
+          style={Object.assign({},inp,{fontSize:12,padding:"7px 10px",marginBottom:10,background:C.g50})} />
+        <div style={{fontSize:10,fontWeight:700,color:C.g400,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>History</div>
+        {filtHist.length===0
+          ? <div style={{fontSize:12,color:C.g400,lineHeight:1.6}}>No saved content yet.</div>
+          : filtHist.map(function(item){
+              return (
+                <div key={item.id} onClick={function(){ loadEntry(item.id); }}
+                  style={{padding:"10px 12px",borderRadius:10,border:"1px solid "+(item.id===activeId?C.p400:C.g200),background:item.id===activeId?C.p50:C.white,marginBottom:6,cursor:"pointer",position:"relative"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:C.p600,textTransform:"uppercase",background:C.p100,display:"inline-block",padding:"1px 6px",borderRadius:4,marginBottom:4}}>{item.type}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:C.g800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:2}}>{item.title||"Untitled"}</div>
+                  <div style={{fontSize:10,color:C.g400}}>{item.date}</div>
+                  <button onClick={function(e){ delEntry(item.id,e); }} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.g300,cursor:"pointer",fontSize:14}}>x</button>
+                </div>
+              );
+            })
+        }
+      </div>
+    );
+  }
+
+  // ── Input view
+  function InputView() {
+    return (
+      <div>
+        <div style={{background:"linear-gradient(135deg,"+C.p600+","+C.p700+")",padding:"44px 24px",textAlign:"center"}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:20,padding:"4px 12px",marginBottom:16}}>
+            <div style={{width:5,height:5,background:"rgba(255,255,255,0.7)",borderRadius:"50%"}} />
+            <span style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.9)",letterSpacing:"0.07em",textTransform:"uppercase"}}>Content Studio</span>
+          </div>
+          <h1 style={{fontSize:34,fontWeight:800,color:C.white,letterSpacing:"-0.03em",lineHeight:1.15,marginBottom:8}}>ContentOS</h1>
+          <p style={{fontSize:15,color:"rgba(255,255,255,0.75)",lineHeight:1.6}}>Turn any idea into content that compounds.</p>
+        </div>
+        <div style={shell}>
+          <Sidebar activeId={curId} />
+          <div style={{flex:1,minWidth:0}}>
+            <div style={card}>
+              <div style={{fontSize:10,fontWeight:700,color:C.g400,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>Step 1 — What are you creating?</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                {TYPES.map(function(t){
+                  var sel2 = ctype===t.id;
+                  return (
+                    <button key={t.id} onClick={function(){ setCtype(t.id); }}
+                      style={{padding:"12px 8px",borderRadius:10,border:"1.5px solid "+(sel2?C.p500:C.g200),background:sel2?C.p50:C.g50,cursor:"pointer",textAlign:"center",boxShadow:sel2?"0 0 0 3px rgba(168,85,247,0.1)":"none",fontFamily:"inherit"}}>
+                      <div style={{fontSize:12,fontWeight:600,color:C.g800}}>{t.label}</div>
+                      <div style={{fontSize:10,color:C.g400,marginTop:2}}>{t.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={card}>
+              <div style={{fontSize:10,fontWeight:700,color:C.g400,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>Step 2 — Paste your content</div>
+              <div onClick={function(){ fileRef.current.click(); }}
+                onDragOver={function(e){ e.preventDefault(); e.currentTarget.style.borderColor=C.p400; e.currentTarget.style.background=C.p50; }}
+                onDragLeave={function(e){ e.currentTarget.style.borderColor=C.g200; e.currentTarget.style.background=C.g50; }}
+                onDrop={function(e){ e.preventDefault(); e.currentTarget.style.borderColor=C.g200; e.currentTarget.style.background=C.g50; var f=e.dataTransfer.files[0]; if(f){var r=new FileReader(); r.onload=function(ev){setContent(ev.target.result);}; r.readAsText(f);} }}
+                style={{border:"2px dashed "+C.g200,borderRadius:10,padding:"16px 20px",marginBottom:12,background:C.g50,cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:13,color:C.g500,fontWeight:500}}>Drop a file or click to browse</div>
+                <div style={{fontSize:11,color:C.g400,marginTop:2}}>.txt · .md · .doc supported</div>
+              </div>
+              <input ref={fileRef} type="file" accept=".txt,.md,.doc,.docx" style={{display:"none"}} onChange={function(e){ var f=e.target.files[0]; if(f){var r=new FileReader(); r.onload=function(ev){setContent(ev.target.result);}; r.readAsText(f);} }} />
+              <div style={{display:"flex",alignItems:"center",gap:10,margin:"12px 0"}}>
+                <div style={{flex:1,height:1,background:C.g200}} />
+                <span style={{fontSize:11,color:C.g400,fontWeight:500}}>or paste below</span>
+                <div style={{flex:1,height:1,background:C.g200}} />
+              </div>
+              <textarea value={content} onChange={function(e){ setContent(e.target.value); }} placeholder="Paste your transcript or content here..."
+                style={{width:"100%",padding:"12px 14px",border:"1.5px solid "+C.g200,borderRadius:10,fontSize:13.5,lineHeight:1.7,color:C.g900,resize:"vertical",outline:"none",background:C.white,fontFamily:"inherit",minHeight:200,boxSizing:"border-box"}} />
+              <div style={{fontSize:11,color:C.g300,textAlign:"right",marginTop:4}}>{content.length>0?content.length.toLocaleString()+" chars":""}</div>
+            </div>
+
+            <div style={card}>
+              <div style={{fontSize:10,fontWeight:700,color:C.g400,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>Step 3 — Customise</div>
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,fontWeight:600,color:C.g500,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.07em"}}>Tone</div>
+                <select value={tone} onChange={function(e){ setTone(e.target.value); }} style={Object.assign({},inp,{width:"auto"})}>
+                  {TONES.map(function(t){ return <option key={t}>{t}</option>; })}
+                </select>
+              </div>
+              <div style={{fontSize:10,fontWeight:600,color:C.g500,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.07em"}}>Generate</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {visSecs.map(function(s){
+                  var on = !!sel[s.id];
+                  return (
+                    <label key={s.id} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,border:"1.5px solid "+(on?C.p400:C.g200),background:on?C.p50:C.white,cursor:"pointer",fontSize:12,fontWeight:500,color:on?C.p700:C.g600}}>
+                      <input type="checkbox" checked={on} onChange={function(e){ setSel(function(prev){ var n=Object.assign({},prev); n[s.id]=e.target.checked; return n; }); }} style={{accentColor:C.p600}} />
+                      {s.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {error && <div style={{padding:"10px 14px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,color:C.red,fontSize:13,marginBottom:12}}>{error}</div>}
+            <button onClick={generate} disabled={loading||!content.trim()}
+              style={{width:"100%",padding:14,borderRadius:12,border:"none",background:loading||!content.trim()?C.g200:"linear-gradient(135deg,"+C.p500+","+C.p700+")",color:loading||!content.trim()?C.g400:C.white,fontSize:14,fontWeight:700,cursor:loading||!content.trim()?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:loading||!content.trim()?"none":"0 4px 14px rgba(139,92,246,0.35)"}}>
+              {loading?"Generating...":"Generate Content Package →"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Output view
+  function OutputView() {
+    var curSec = visSecs.find(function(s){ return s.id===tab; }) || visSecs[0];
+    var isMulti= tab==="linkedin"||tab==="twitter";
+    var posts  = isMulti ? splitPosts(edited[tab]||"") : [];
+    var LI_LABELS = ["Narrative Post","Pointer / Takeaways","Storytelling Post"];
+    var TW_LABELS = ["Quote Post","Takeaways List","Hot Take","Stat / Data","Question Post","X Thread"];
+
+    return (
+      <div style={shell}>
+        <Sidebar activeId={curId} />
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",gap:1,background:C.g100,padding:4,borderRadius:12,marginBottom:16,overflowX:"auto",border:"1px solid "+C.g200}}>
+            {visSecs.filter(function(s){ return s.id!=="titles" && edited[s.id]; }).map(function(s){
+              return (
+                <button key={s.id} onClick={function(){ setTab(s.id); }}
+                  style={{padding:"7px 14px",borderRadius:9,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap",background:tab===s.id?C.white:"transparent",color:tab===s.id?C.p700:C.g500,boxShadow:tab===s.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"inherit"}}>
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{background:C.white,borderRadius:16,padding:"24px 28px",boxShadow:"0 4px 16px rgba(0,0,0,0.06)",border:"1px solid "+C.g200}}>
+            {isMulti ? posts.map(function(post,i){
+              var key = tab+"_"+i;
+              var lbl = tab==="linkedin" ? (LI_LABELS[i]||("LinkedIn Post "+(i+1))) : (TW_LABELS[i]||("X Post "+(i+1)));
+              return (
+                <div key={i}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7}}>
+                      <div style={{width:3,height:14,borderRadius:2,background:curSec.accent}} />
+                      <span style={{fontSize:10,fontWeight:700,color:C.g400,textTransform:"uppercase",letterSpacing:"0.09em"}}>{lbl}</span>
+                    </div>
+                    <div style={{display:"flex",gap:5}}>
+                      <button onClick={function(){ setRegenSec({id:tab,label:lbl}); }} style={{padding:"4px 10px",fontSize:11,borderRadius:6,border:"1px solid "+C.g200,background:C.white,color:C.g500,cursor:"pointer",fontFamily:"inherit"}}>Regen</button>
+                      <CopyBtn text={post} small />
+                    </div>
+                  </div>
+                  <Sec id={key} accent={curSec.accent} content={post} onSave={function(nv){ var ps=splitPosts(edited[tab]||""); ps[i]=nv; saveEdit(tab,ps.join("\n\n[POST X]\n")); }} />
+                  {i<posts.length-1 && <div style={{height:1,background:C.g100,margin:"4px 0 20px"}} />}
+                </div>
+              );
+            }) : tab==="summary" ? (
+              <div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <span style={{fontSize:13,fontWeight:600,color:C.g700}}>Strategic Summary</span>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={function(){ setRegenSec(curSec); }} style={{padding:"5px 12px",fontSize:12,fontWeight:500,borderRadius:7,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Regenerate</button>
+                    <CopyBtn text={edited.summary||""} />
+                  </div>
+                </div>
+                <Sec id="summary" accent={curSec.accent} content={edited.summary||""} onSave={function(v){ saveEdit("summary",v); }} />
+                {edited.titles && (
+                  <div style={{marginTop:8}}>
+                    <div style={{height:1,background:C.g100,margin:"8px 0 20px"}} />
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                      <div style={{display:"flex",alignItems:"center",gap:7}}>
+                        <div style={{width:3,height:14,borderRadius:2,background:C.emerald}} />
+                        <span style={{fontSize:13,fontWeight:600,color:C.g700}}>Titles and Thumbnails</span>
+                      </div>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={function(){ setRegenSec({id:"titles",label:"Titles and Thumbnails"}); }} style={{padding:"5px 12px",fontSize:12,fontWeight:500,borderRadius:7,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Regenerate</button>
+                        <CopyBtn text={edited.titles||""} />
+                      </div>
+                    </div>
+                    <Sec id="titles" accent={C.emerald} content={edited.titles||""} onSave={function(v){ saveEdit("titles",v); }} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <span style={{fontSize:13,fontWeight:600,color:C.g700}}>{curSec?curSec.label:""}</span>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={function(){ setRegenSec(curSec); }} style={{padding:"5px 12px",fontSize:12,fontWeight:500,borderRadius:7,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Regenerate</button>
+                    <CopyBtn text={edited[tab]||""} />
+                  </div>
+                </div>
+                <Sec id={tab} accent={curSec?curSec.accent:C.p500} content={edited[tab]||""} onSave={function(v){ saveEdit(tab,v); }} />
+              </div>
+            )}
+            <div style={{borderTop:"1px solid "+C.g100,paddingTop:16,display:"flex",justifyContent:"flex-end",gap:6,marginTop:8}}>
+              <button onClick={function(){ exportMd(edited); }} style={{padding:"6px 12px",fontSize:12,borderRadius:7,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Export .md</button>
+              <button onClick={function(){ copyAll(edited); }}  style={{padding:"6px 12px",fontSize:12,borderRadius:7,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Copy all</button>
+            </div>
+          </div>
+          <div style={{textAlign:"center",fontSize:11,color:C.g400,marginTop:10}}>Click any section to edit · Edits auto-saved · Regenerate any section</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {loading && <LoadingScreen phrase={phrase} />}
+      <div style={{minHeight:"100vh",background:C.g50,fontFamily:"Inter,system-ui,sans-serif",WebkitFontSmoothing:"antialiased"}}>
+        <div style={nav}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:30,height:30,background:"linear-gradient(135deg,"+C.p500+","+C.p700+")",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:C.white}}>C</div>
+            <span style={{fontSize:15,fontWeight:700,color:C.g900,letterSpacing:"-0.02em"}}>ContentOS</span>
+          </div>
+          {view==="output" && (
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={function(){ exportMd(edited); }} style={{padding:"6px 12px",fontSize:12,fontWeight:500,borderRadius:7,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Export</button>
+              <button onClick={function(){ copyAll(edited); }}  style={{padding:"6px 12px",fontSize:12,fontWeight:500,borderRadius:7,border:"1px solid "+C.g200,background:C.white,color:C.g600,cursor:"pointer",fontFamily:"inherit"}}>Copy all</button>
+              <button onClick={function(){ setView("input"); setCurId(null); }} style={{padding:"6px 12px",fontSize:12,fontWeight:600,borderRadius:7,border:"none",background:C.p600,color:C.white,cursor:"pointer",fontFamily:"inherit"}}>+ New</button>
+            </div>
+          )}
+        </div>
+        {view==="input" ? <InputView /> : <OutputView />}
+        {showBrand && <BrandModal value={brand} onSave={async function(v){ setBrand(v); await db.set("brandGuide",v); }} onClose={function(){ setShowBrand(false); }} />}
+        {regenSec  && <RegenModal label={regenSec.label} loading={regenLoad} onRegen={regenFn} onClose={function(){ setRegenSec(null); }} />}
+      </div>
+    </>
+  );
+}
